@@ -1,0 +1,11 @@
+[Unit]
+Description=monitor tv status
+After=syslog.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/openhab2
+ExecStart=/opt/openhab2/bravia.sh
+
+[Install]
+WantedBy=multi-user.target
