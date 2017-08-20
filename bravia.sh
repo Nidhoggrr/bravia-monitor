@@ -3,34 +3,24 @@
 tvname="bravia.loc"
 #set tv item name in oh here
 tvitemname="Bravia_Power"
-#set tv item name in oh here
-tvmuteitemname="Bravia_AudioMute"
-DEBUG=1
+DEBUG=0
 while true
 do
 while ping "$tvname" -c 1 > /dev/null
 do
-echo *SEPOWR################|netcat "$tvname" 20060 | while IFS=, read -a s
-do 
-	p=${s#\*S} 
-	cmd=${s:22}
-	[ $cmd == "1" ] && cmd="ON"
-	[ $cmd == "0" ] && cmd="OFF"
-	case $p in
-	?"POWR000000000000000"?)
-		[[ DEBUG -eq 1 ]] && echo $cmd
-		curl -X PUT --header "Content-Type: text/plain" --header "Accept: application/json" -d $cmd "http://localhost:8080/rest/items/$tvitemname/state"
-		;;
-	"NAMUT000000000000000"?)
-		[[ DEBUG -eq 1 ]] && echo $cmd
-		curl -X PUT --header "Content-Type: text/plain" --header "Accept: application/json" -d $cmd "http://localhost:8080/rest/items/$tvmuteitemname/state"
-		;;
-	*)
-		echo $p unhandled
-		;;
-esac
+	oldstatus=$status
+	status=$(curl --silent -i -X POST -H "X-HTTP-Method-Override: PUT" -H "Accept: application/json" --header "Content-Type: text/plain" --header "Accept: application/json" -d '{"id":4,"method":"getPowerStatus","version":"1.0","params":["1.0"]}' "http://bravia.loc/sony/system" 2>&1 |tail -1 |jq ".result[0] .status")
+	[[ DEBUG -eq 1 ]] && echo Status=$status
+	if [ x$status != x$oldstatus ]; then
+	if [ $status = \"active\" ]; then
+		[[ DEBUG -eq 1 ]] && echo Sending ON to openhab
+		curl -X PUT --header "Content-Type: text/plain" --header "Accept: application/json" -d ON "http://localhost:8080/rest/items/$tvitemname/state"
+	else
+		[[ DEBUG -eq 1 ]] && echo Sending OFF to openhab
+		curl -X PUT --header "Content-Type: text/plain" --header "Accept: application/json" -d OFF "http://localhost:8080/rest/items/$tvitemname/state"
+	fi
+	fi
+	sleep 5
 done
-done
-curl -X PUT --header "Content-Type: text/plain" --header "Accept: application/json" -d "OFF" "http://localhost:8080/rest/items/$tvitemname/state"
 sleep 10
 done
